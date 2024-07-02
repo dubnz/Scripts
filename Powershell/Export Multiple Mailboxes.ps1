@@ -86,6 +86,9 @@ While (-Not ((Get-ChildItem -Path $($env:LOCALAPPDATA + "\Apps\2.0\") -Filter mi
 # Find the Unified Export Tool's location and create a variable for it
 $ExportExe = ((Get-ChildItem -Path $($env:LOCALAPPDATA + "\Apps\2.0\") -Filter microsoft.office.client.discovery.unifiedexporttool.exe -Recurse).FullName | Where-Object{ $_ -notmatch "_none_" } | Select-Object -First 1)
 
+Write-Host "Connecting to Exchange Online. Enter your admin credentials in the pop-up window."
+Connect-IPPSSession
+
 foreach ($emailAddress in $emailAddresses) {
     # Initialize the search status
     $SearchStatus = "NotStarted"
@@ -116,8 +119,8 @@ foreach ($emailAddress in $emailAddresses) {
     Write-Host "Pausing script for 2 minutes, waiting for export to be ready to download"
     Start-Sleep -s 120 # Arbitrarily wait 5 seconds to give microsoft's side time to create the SearchAction before the next commands try to run against it. I /COULD/ do a for loop and check, but it's really not worth it.
 
-    $ExportDetails = Get-ComplianceSearchAction -Identity $ExportName -IncludeCredential -Details
     $ExportName += "_Export"
+    $ExportDetails = Get-ComplianceSearchAction -Identity $ExportName -IncludeCredential -Details
     $ExportDetails = $ExportDetails.Results.split(";")
     $ExportContainerUrl = $ExportDetails[0].trimStart("Container url: ")
     $ExportSasToken = $ExportDetails[1].trimStart(" SAS token: ")
@@ -128,8 +131,8 @@ foreach ($emailAddress in $emailAddresses) {
 
     # Download the exported files from Office 365
     Write-Host "Initiating download for $ExportName"
-    Write-Host "Saving export to: $ExportLocation"
-    $Arguments = "-name ""$SearchName""","-source ""$ExportContainerUrl""","-key ""$ExportSasToken""","-dest ""$ExportLocation""","-trace true"
+    Write-Host "Saving export to: $exportLocation"
+    $Arguments = "-name ""$ExportName""","-source ""$ExportContainerUrl""","-key ""$ExportSasToken""","-dest ""$exportLocation""","-trace true"
     Start-Process -FilePath "$ExportExe" -ArgumentList $Arguments
 
     # Wait for the process to start
